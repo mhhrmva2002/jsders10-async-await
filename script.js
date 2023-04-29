@@ -1,89 +1,184 @@
-// import { getAllCategories } from "./httprequests";
-
-const baseURL = "https://northwind.vercel.app/api/categories";
-// get all Categories
-const getAllCategories = async () => {
-    const response = await fetch(baseURL, { mode: 'cors' });
-    const data = await response.json();
-    return data;
-}
-
-// get all Category by ID
-const getAllCategoriesByID = async (id) => {
-    let globalData;
-    await fetch(`${baseURL}/${id}`)
-        .then(response => response.json())
-        .then(data => {
-            globalData = data;
-        })
-    return globalData;
-}
-
-
-
-// delete  Category by ID
-const deleteCategoryByID = async (id) => {
-    let globalData;
-    await fetch(`${baseURL}/${id}`, {
-        method: "DELETE"
-    })
-
-    return globalData;
-}
-
-// post Category 
-const postCategory = async (category) => {
-    fetch(`${baseURL}/${category}`, {
-        method: "POST",
-headers: {
-'Content-Type':'application/json'
-        },
-        body: JSON.stringify(category)
-    })
-}
-
-
-// put Category by ID
-const putCategory = async (id,category) => {
-    fetch(`${baseURL}/${id,category}`, {
-        method: "PUT",
-headers: {
-'Content-Type':'application/json'
-        },
-        body: JSON.stringify(category)
-    })
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let list = document.querySelector("#categories")
-let detail = document.querySelector("#detail")
-// use categories
-getAllCategories().then(data => {
-    data.forEach(categories => {
-        list.innerHTML += `<li>${categories.name}</li>`
+import {
+    getAllCategories,
+    deleteCategoryByID,
+    postCategory,
+    editCategoryByID,
+    getCategoryByID,
+  } from "./httprequests.js";
+  let list = document.querySelector(".categories");
+  let editModal = document.querySelector("#edit-category-modal");
+  let EditCloseModal = document.querySelector(".close-modal-edit");
+  let editBtn = document.querySelector(".edit-btn");
+  let editNameInput = document.querySelector("#edit-name");
+  let editDescInput = document.querySelector("#edit-desc");
+  
+  getAllCategories().then((data) => {
+    data.forEach((category) => {
+      list.innerHTML += `<li data-desc="${category.description}" class="list-group-item d-flex  justify-content-between">
+        <span>${category.name}</span>
+        <div>
+        <button class="btn btn-warning" data-id="${category.id}">Edit</button>
+        <button class="btn btn-danger" data-id="${category.id}">Delete</button>
+        </div>
+        </li>`;
     });
-})
-
-// // use categorie by ID
-// getAllCategoriesByID(4).then(data=>{
-//     detail.textContent=`${data.name},desc: ${data.description}`
-// })
-
-// // use deletecategorie by ID
-// deleteCategoryByID(4)
-
-
-// //use post category
-//  postCategory({name:'code Academy', description:'1234'});
+    //delete button click event
+    Array.from(list.children).forEach((item) => {
+      let deleteButton = item.children[1].children[1];
+      let editButton = item.children[1].children[0];
+      let categoryName = item.children[0].textContent;
+      deleteButton.addEventListener("click", (e) => {
+        //sweet alert
+        const swalWithBootstrapButtons = Swal.mixin({
+          customClass: {
+            confirmButton: "btn btn-success",
+            cancelButton: "btn btn-danger",
+          },
+          buttonsStyling: false,
+        });
+  
+        swalWithBootstrapButtons
+          .fire({
+            title: `Are you sure to delete ${categoryName}?`,
+            text: "You won't be able to revert this!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "No, cancel!",
+            reverseButtons: true,
+          })
+          .then((result) => {
+            if (result.isConfirmed) {
+              swalWithBootstrapButtons.fire(
+                "Deleted!",
+                "Your file has been deleted.",
+                "success"
+              );
+              let id = e.target.getAttribute("data-id");
+              deleteCategoryByID(id);
+              //delete from UI
+              e.target.parentElement.parentElement.remove();
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+              swalWithBootstrapButtons.fire(
+                "Cancelled",
+                "Your imaginary file is safe :)",
+                "error"
+              );
+            }
+          });
+      });
+  
+      //get editing data values
+      let nameEdit = categoryName;
+      let descEdit = item.getAttribute("data-desc");
+      let idEdit = item.children[1].children[0].getAttribute("data-id");
+      let editingObj = {
+        id: idEdit,
+        name: nameEdit,
+        description: descEdit,
+      };
+  
+      //edit button click - modal
+      editButton.addEventListener("click", () => {
+        document.body.classList.add("modal-body");
+        editModal.style.opacity = "1";
+        editModal.style.visibility = "visible";
+        editModal.style.transform = "translate(-50%,-50%) scale(1)";
+  
+        editNameInput.value = editingObj.name;
+        editDescInput.value = editingObj.description;
+        editBtn.setAttribute("data-id",editingObj.id);
+  
+        //getting currently editin list item
+        item.setAttribute("is-editing",true);
+      });
+    });
+        //edit button request
+        editBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          let newName = editNameInput.value;
+          let newDesc = editDescInput.value;
+          let id = e.target.getAttribute("data-id");
+          let updatedCategory = {
+            name: newName,
+            description: newDesc,
+          };
+          editCategoryByID(id,updatedCategory);
+          EditModalClose();
+  
+          //update in UI
+          Array.from(list.children).filter((item)=>{
+            if (item.getAttribute("is-editing")) {
+              item.children[0].textContent = newName;
+            }
+          })
+        });
+  });
+  
+  //open modal
+  let openModal = document.querySelector(".open-modal");
+  let closeModal = document.querySelector(".close-modal");
+  let modal = document.querySelector("#add-category-modal");
+  
+  openModal.addEventListener("click", () => {
+    document.body.classList.add("modal-body");
+    modal.style.opacity = "1";
+    modal.style.visibility = "visible";
+    modal.style.transform = "translate(-50%,-50%) scale(1)";
+  });
+  
+  closeModal.onclick = function () {
+    ModalClose();
+  };
+  EditCloseModal.onclick = function () {
+    EditModalClose();
+    Array.from(list.children).forEach((item)=>{
+      console.log(item);
+      item.removeAttribute("is-editing");
+    })
+  };
+  
+  function ModalClose() {
+    document.body.classList.remove("modal-body");
+    modal.style.opacity = "0";
+    modal.style.visibility = "hidden";
+    modal.style.transform = "translate(-50%,-50%) scale(0)";
+  }
+  function EditModalClose() {
+    document.body.classList.remove("modal-body");
+    editModal.style.opacity = "0";
+    editModal.style.visibility = "hidden";
+    editModal.style.transform = "translate(-50%,-50%) scale(0)";
+  }
+  
+  //add product
+  let nameInput = document.querySelector("#name");
+  let descInput = document.querySelector("#desc");
+  let form = document.querySelector("form");
+  
+  form.addEventListener("submit",async(e) => {
+    e.preventDefault();
+    const category = {
+      name: nameInput.value,
+      description: descInput.value,
+    };
+    //reset inputs
+    nameInput.value = "";
+    descInput.value = "";
+    let id;
+    await postCategory(category).then((data)=>{
+       id = data.id;
+    })
+  
+    // add product to UI
+    list.innerHTML += `<li data-desc="${category.description}" class="list-group-item d-flex  justify-content-between">
+    <span>${category.name}</span>
+    <div>
+    <button class="btn btn-warning" data-id="${id}">Edit</button>
+    <button class="btn btn-danger" data-id="${id}">Delete</button>
+    </div>
+    </li>`;
+  
+    //close modal
+    ModalClose();
+  });
